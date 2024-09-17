@@ -2,10 +2,11 @@ from time import sleep
 from math import cos, sin
 
 class Robot:
-    def __init__(self, integration_steps, max_rot_sec, d):
+    def __init__(self, integration_steps, max_rot_sec, d, radius):
         self.integration_steps = integration_steps
         self.max_rot_sec = max_rot_sec
         self.d = d
+        self.radius = radius
 
     def findDistance(self, velocity, angular_velocity, seconds, prev_x, prev_y, prev_orientation):
         x = prev_x
@@ -33,8 +34,10 @@ class Robot:
 
     def logPosition(self, speed_left, speed_right, seconds, prev_x, prev_y, prev_orientation):
         # find velocities of each wheel
-        v_left = speed_left / 100 * self.max_rot_sec
-        v_right = speed_right / 100 * self.max_rot_sec
+        v_left = speed_left / 100 * self.radius * self.max_rot_sec
+        v_right = speed_right / 100 * self.radius * self.max_rot_sec
+
+        print(f"v_left: {v_left}")
 
         # turning on angle
         if v_left != v_right:
@@ -42,6 +45,7 @@ class Robot:
             rotation_radius = self.d * (v_right + v_left) / (v_right - v_left)
 
             velocity = rotation_radius * angular_velocity
+            print(f"velocity: {velocity}")
         # straight line
         else:
             velocity = v_left
@@ -66,8 +70,8 @@ class Robot:
         for command in commands:
             self.go(*command)
             distance_x, distance_y, orientation = self.logPosition(*command, prev_x, prev_y, prev_orientation)
-            prev_x +=distance_x
-            prev_y +=distance_y
+            prev_x += distance_x
+            prev_y += distance_y
             prev_orientation = orientation
 
 
@@ -77,5 +81,5 @@ commands = [
     [-50, 80, 2],
 ]
 
-robot = Robot(integration_steps=10, max_rot_sec=2.13, d=9.75)
+robot = Robot(integration_steps=10, max_rot_sec=2.13, d=9.75, radius = 34.4)
 robot.moveDeadReckoning(commands)
