@@ -20,7 +20,8 @@ class Robot:
         
         for i in range(self.integration_steps):
             if(angular_velocity):
-                orientation_2 += delta_angular_velocity
+                orientation_1 = prev_orientation + delta_angular_velocity * i
+                orientation_2 = prev_orientation + delta_angular_velocity * (i+1)
             else:
                 orientation_1 = prev_orientation
                 orientation_2 = prev_orientation
@@ -45,7 +46,7 @@ class Robot:
             rotation_radius = self.d * (v_right + v_left) / (v_right - v_left)
 
             velocity = rotation_radius * angular_velocity
-            print(f"velocity: {velocity}")
+            print(f"velocity: {velocity}, rotation radius: {rotation_radius}")
         # straight line
         else:
             velocity = v_left
@@ -70,8 +71,8 @@ class Robot:
         for command in commands:
             self.go(*command)
             distance_x, distance_y, orientation = self.logPosition(*command, prev_x, prev_y, prev_orientation)
-            prev_x += distance_x
-            prev_y += distance_y
+            prev_x = distance_x
+            prev_y = distance_y
             prev_orientation = orientation
 
 
@@ -83,3 +84,4 @@ commands = [
 
 robot = Robot(integration_steps=10, max_rot_sec=2.13, d=9.75, radius = 34.4)
 robot.moveDeadReckoning(commands)
+
