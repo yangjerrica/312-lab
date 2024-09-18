@@ -25,9 +25,13 @@ class Robot:
             else:
                 orientation_1 = prev_orientation
                 orientation_2 = prev_orientation
-            t_2 += delta_sec
+            t_1 = delta_sec * i 
+            t_2 = delta_sec * (i+1)
+            # print(f"t_1: {t_1}, t_2: {t_2}")
             x += t_2 * velocity * cos(orientation_2) - t_1 * velocity * cos(orientation_1)
             y += t_2 * velocity * sin(orientation_2) - t_1 * velocity * sin(orientation_1)
+
+
             
             print(f"x: {x}, y: {y}, orientation: {orientation_2}")
 
@@ -35,8 +39,8 @@ class Robot:
 
     def logPosition(self, speed_left, speed_right, seconds, prev_x, prev_y, prev_orientation):
         # find velocities of each wheel
-        v_left = speed_left / 100 * self.radius * self.max_rot_sec
-        v_right = speed_right / 100 * self.radius * self.max_rot_sec
+        v_left = speed_left / 100 * self.radius * 2 * 3.14* self.max_rot_sec
+        v_right = speed_right / 100 * self.radius * 2*3.14 *self.max_rot_sec
 
         print(f"v_left: {v_left}")
 
@@ -82,6 +86,6 @@ commands = [
     [-50, 80, 2],
 ]
 
-robot = Robot(integration_steps=10, max_rot_sec=2.13, d=9.75, radius = 34.4)
+robot = Robot(integration_steps=10, max_rot_sec=2.13, d=97.5, radius = 34.4)
 robot.moveDeadReckoning(commands)
 
