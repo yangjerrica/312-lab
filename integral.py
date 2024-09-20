@@ -8,7 +8,7 @@ class Robot:
         self.d = d
         self.radius = radius
 
-    def findDistance(self, velocity, angular_velocity, seconds, prev_x, prev_y, prev_orientation):
+    def findDistance(self, velocity, angular_velocity, seconds, prev_x, prev_y, prev_orientation, prev_time):
         x = prev_x
         y = prev_y
         orientation_1 = 0
@@ -17,17 +17,19 @@ class Robot:
         t_2 = 0
         delta_angular_velocity = angular_velocity / self.integration_steps
         delta_sec = seconds / self.integration_steps
+        print(f"delta_sec: {delta_sec}, prev_time: {prev_time}")
         
         for i in range(self.integration_steps):
+        
             if(angular_velocity):
                 orientation_1 = prev_orientation + delta_angular_velocity * i
                 orientation_2 = prev_orientation + delta_angular_velocity * (i+1)
             else:
                 orientation_1 = prev_orientation
                 orientation_2 = prev_orientation
-            t_1 = delta_sec * i 
-            t_2 = delta_sec * (i+1)
-            # print(f"t_1: {t_1}, t_2: {t_2}")
+            t_1 = prev_time + delta_sec * i 
+            t_2 = prev_time + delta_sec * (i+1)
+            print(f"t_1: {t_1}, t_2: {t_2}")
             x += t_2 * velocity * cos(orientation_2) - t_1 * velocity * cos(orientation_1)
             y += t_2 * velocity * sin(orientation_2) - t_1 * velocity * sin(orientation_1)
 
@@ -35,34 +37,35 @@ class Robot:
             
             print(f"x: {x}, y: {y}, orientation: {orientation_2}")
 
-        return x, y, orientation_2
+        return x, y, orientation_2, t_2
 
-    def logPosition(self, speed_left, speed_right, seconds, prev_x, prev_y, prev_orientation):
+    def logPosition(self, speed_left, speed_right, seconds, prev_x, prev_y, prev_orientation, prev_time):
         # find velocities of each wheel
-        v_left = speed_left / 100 * self.radius * 2 * 3.14* self.max_rot_sec
-        v_right = speed_right / 100 * self.radius * 2*3.14 *self.max_rot_sec
+        v_left = speed_left / 100 * self.radius * 2 * 3.14 * self.max_rot_sec
+        v_right = speed_right / 100 * self.radius * 2 * 3.14 *self.max_rot_sec
 
-        print(f"v_left: {v_left}")
+        print(f"v_left: {v_left}, v_right: {v_right}")
 
         # turning on angle
         if v_left != v_right:
             angular_velocity = (v_right - v_left) / (2 * self.d)
             rotation_radius = self.d * (v_right + v_left) / (v_right - v_left)
+            print("rotation radius",rotation_radius, "angular_velocity", angular_velocity)
 
             velocity = rotation_radius * angular_velocity
-            print(f"velocity: {velocity}, rotation radius: {rotation_radius}")
+            # print(f"velocity: {velocity}, rotation radius: {rotation_radius}")
         # straight line
         else:
             velocity = v_left
             angular_velocity = 0
 
-        distance_x, distance_y, orientation = self.findDistance(
-            velocity, angular_velocity, seconds, prev_x, prev_y, prev_orientation
+        distance_x, distance_y, orientation, time = self.findDistance(
+            velocity, angular_velocity, seconds, prev_x, prev_y, prev_orientation, prev_time
         )
 
         print(f"Distance X: {distance_x}, Distance Y: {distance_y}, Orientation: {orientation}")
 
-        return distance_x, distance_y, orientation
+        return distance_x, distance_y, orientation, time
 
     def go(self, speed_left, speed_right, seconds):
         print(f"Going: Left Speed {speed_left}, Right Speed {speed_right}, for {seconds} seconds")
@@ -72,9 +75,11 @@ class Robot:
         prev_x = 0
         prev_y = 0
         prev_orientation = 0
+        prev_time = 0
         for command in commands:
             self.go(*command)
-            distance_x, distance_y, orientation = self.logPosition(*command, prev_x, prev_y, prev_orientation)
+            distance_x, distance_y, orientation, time = self.logPosition(*command, prev_x, prev_y, prev_orientation, prev_time)
+            prev_time = time
             prev_x = distance_x
             prev_y = distance_y
             prev_orientation = orientation
