@@ -130,12 +130,6 @@ class Arm():
 
         first_x, first_y = self.recordLength()
 
-        sec_theta_1 = float(input("enter theta 1:"))
-
-        sec_theta_2 = float(input("enter theta 2:"))
-
-        arm.moveWithTheta(sec_theta_1,sec_theta_2)
-
         second_x, second_y = self.recordLength()
 
         distance = self.euclideanDistance(first_x, first_y, second_x, second_y)
@@ -160,18 +154,24 @@ class Arm():
     def findAngleBetweenPoints(self):
         # TODO: change this to touch sensor entering points
 
-        
-        self.moveArmsAbsolute(self.lower_arm.midpoint + 50, self.upper_arm.midpoint - 10)
-        intersect_x, intersect_y = self.getPosition()
-        print("intersect", intersect_x, intersect_y)
+        intersect_x, intersect_y = self.recordLength()
 
-        self.moveArmsAbsolute(self.lower_arm.midpoint + 30, self.upper_arm.midpoint - 10)
-        first_x, first_y = self.getPosition()
-        print("first", first_x, first_y)
+        first_x, first_y = self.recordLength()
 
-        self.moveArmsAbsolute(self.lower_arm.midpoint + 60, self.upper_arm.midpoint - 10)
-        second_x, second_y = self.getPosition()
-        print("second", second_x, second_y)
+        second_x,second_y = self.recordLength()
+
+
+        # self.moveArmsAbsolute(self.lower_arm.midpoint + 50, self.upper_arm.midpoint - 10)
+        # intersect_x, intersect_y = self.getPosition()
+        # print("intersect", intersect_x, intersect_y)
+
+        # self.moveArmsAbsolute(self.lower_arm.midpoint + 30, self.upper_arm.midpoint - 10)
+        # first_x, first_y = self.getPosition()
+        # print("first", first_x, first_y)
+
+        # self.moveArmsAbsolute(self.lower_arm.midpoint + 60, self.upper_arm.midpoint - 10)
+        # second_x, second_y = self.getPosition()
+        # print("second", second_x, second_y)
 
         try:
             first_slope = (first_y - intersect_y)/(first_x - intersect_x)
