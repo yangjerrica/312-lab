@@ -1,5 +1,6 @@
 import sys
-from math import pi, cos, sin, sqrt, atan, acos
+from math import pi, cos, sin, sqrt, atan, acos 
+import numpy as np
 # from ev3dev2.motor import LargeMotor, SpeedPercent, OUTPUT_A, OUTPUT_B
 class TempArm():
     pass
@@ -38,12 +39,13 @@ class Arm():
         self.upper_arm.midpoint = 41425
 
         # arm lengths in mm
-        self.lower_arm.length = 650
+        self.lower_arm.length = 106
         self.upper_arm.length = 103
 
 
         # inverse config
         self.newton_error = 0.01
+        self.max_iter = 10
 
         # move to initial position
         self.moveArmsAbsolute(self.lower_arm.midpoint, self.upper_arm.midpoint)
@@ -67,7 +69,7 @@ class Arm():
         upper_arm_angle = self.getAngleOfArm(self.upper_arm, True)
         x = self.lower_arm.length * cos(lower_arm_angle) + self.upper_arm.length * cos(lower_arm_angle + upper_arm_angle)
         y = self.lower_arm.length * sin(lower_arm_angle) + self.upper_arm.length * sin(lower_arm_angle + upper_arm_angle)
-        print(lower_arm_angle, upper_arm_angle,x,y)
+        # print(lower_arm_angle, upper_arm_angle,x,y)
         return x, y
     
     def getLowerArm(self):
@@ -88,43 +90,117 @@ class Arm():
         self.lower_arm.wait_while("running")
         self.upper_arm.wait_while("running")
 
-    def createIntermediatePoints(self, init_x, init_y, end_x, end_y, num_points):
-        delta_x = (end_x - init_x)/(num_points - 1)
-        delta_y = (end_y - init_y)/(num_points - 1)
-
-        points = [None] * num_points
-        for i in range(num_points):
-            points[i] = [init_x+delta_x*i, init_y+delta_y*i]
-            
-        return points
-
     def euclideanDistance(self, init_x, init_y, end_x, end_y):
         return sqrt((end_x - init_x) ** 2 + (end_y - init_y) ** 2)
     
-    def moveToPos(self, end_x, end_y):
+    def moveToPos(self, type_arg, end_x, end_y):
         init_x, init_y = self.getPosition()
+        print(self.getPosition())
 
-        points = self.createIntermediatePoints(init_x, init_y, end_x, end_y, int(self.euclideanDistance(init_x, init_y, end_x, end_y) // 10))
+        points = self.createIntermediatePoints(init_x, init_y, end_x, end_y, max(1, int(self.euclideanDistance(init_x, init_y, end_x, end_y) // 10)))
+        if type_arg == "anal":
+            angles = self.analyticalSolve(points)
 
-        # print(init_x,init_y, points)
+        for theta_1, theta_2 in angles:
+            self.moveArmsAbsolute(self.getAbsPosFromTheta(self.lower_arm, theta_1), self.getAbsPosFromTheta(self.upper_arm, theta_2))
+        print(self.getPosition())
 
-    def moveToMid(self):
+    def moveToMid(self, type_arg):
         pass
+    
+    def analyticalSolve(self, points):
+        curr_theta_2 = self.getAngleOfArm(self.upper_arm, True)
+        for i, (x, y) in enumerate(points):
+            d = (x ** 2 + y ** 2 - self.lower_arm.length ** 2 - self.upper_arm.length ** 2)/(2*self.lower_arm.length*self.upper_arm.length)
+            # theta_2 = atan(sqrt(1-d ** 2) / d)
+            theta_2 = acos(d)
+            if (abs(curr_theta_2 - theta_2) < abs(curr_theta_2 + theta_2)):
+                curr_theta_2 = theta_2
+            else:
+                curr_theta_2 = -theta_2
+            
+            points[i] = [atan(y/x) - atan((self.upper_arm.length*sin(curr_theta_2))/(self.lower_arm.length + self.upper_arm.length*cos(curr_theta_2))), curr_theta_2]
+        
+        return points
+    
+    def createIntermediatePoints(self, init_x, init_y, end_x, end_y, num_points):
+        delta_x = (end_x - init_x)/(num_points)
+        delta_y = (end_y - init_y)/(num_points)
 
-    def analyticalApproach(self, x,y):
-        # D = cos(theta2)
-        D_cos = (x**2 + y**2 - self.lower_arm.length**2 - self.upper_arm.length**2)/ (2*(self.lower_arm.length* self.upper_arm.length))
-        # print(D_cos)
-        theta_2 = acos(D_cos)
-        theta_1 = atan(y/x) - atan(self.upper_arm.length*sin(theta_2)/(self.lower_arm.length + self.upper_arm.length*cos(theta_2)))
-        print(f"theta1:", theta_1, "theta_2:", theta_2)
-        return theta_1, theta_2
+        points = [None] * num_points
+        for i in range(1, num_points + 1):
+            points[i - 1] = [init_x+delta_x*i, init_y+delta_y*i]
+            
+        return points
+    
+    # of end effector
+    def getPositioWithKnownAngles(self, theta_1, theta_2):
+        x = self.lower_arm.length * cos(theta_1) + self.upper_arm.length * cos(theta_1 + theta_2)
+        y = self.lower_arm.length * sin(theta_1) + self.upper_arm.length * sin(theta_1 + theta_2)
+        # print(lower_arm_angle, upper_arm_angle,x,y)
+        return x, y
+    
+    def velocity_kinematics(self, theta_1, theta_2):
+        j_11 = self.upper_arm.length * cos(theta_1 + theta_2)
+        j_12 = self.upper_arm.length * sin(theta_1 + theta_2)
+        j_21 = - self.lower_arm.length * cos(theta_1) - self.upper_arm.length * cos(theta_1 + theta_2)
+        j_22 = - self.lower_arm.length * sin(theta_1) - self.upper_arm.length * sin(theta_1 + theta_2)
+        determinant = self.lower_arm.length * self.upper_arm.length * sin(theta_2)
+
+        if (sin(theta_2) == 0):
+          ## what to do when singular configuration met, use a super small value ex: 1e-6
+            determinant = 1e-6
+            vel_kin = (1/determinant) * np.array([[j_11, j_12], [j_21, j_22]])
+            return vel_kin
+        
+        vel_kin =(1/determinant) * np.array([[j_11, j_12], [j_21, j_22]])
+        
+        return vel_kin
+
+    def newtonApproach(self, target_x, target_y):
+        theta_1 = self.getAngleOfArm(self.lower_arm)
+        theta_2 = self.getAngleOfArm(self.upper_arm)
+    
+        angles = np.zeros((self.max_iter, 2)) 
+
+        for i in range(0, self.max_iter): ## or should we be slowly incrementing the x,y till we get to the desired location
+            
+            curr_x, curr_y = self.getPositioWithKnownAngles(theta_1, theta_2) # forward kinematics 
+            print(f"round", i, "current location", curr_x, ",", curr_y)
+            error_position = np.array([[float(target_x - curr_x)],[float(target_y - curr_y)]])
+            
+            delta_pos = self.euclideanDistance(curr_x, curr_y, target_x, target_y)
+
+            if(delta_pos < self.newton_error):
+                break
+
+            vel_kin = self.velocity_kinematics(theta_1, theta_2)
+            print(f"error of the position:", error_position, "distance to end point", delta_pos)
+            delta_theta = vel_kin @ error_position
+
+            
+            theta_1 += delta_theta[0]
+            theta_2 += delta_theta[1]
+
+            angles[i][0] = theta_1
+            angles[i][1] = theta_2
+            print(f"angles:", theta_1, ',', theta_2)
+        return angles
+
+
+
         
 
 if __name__ == "__main__":
     arm = Arm()
-    arm.moveToPos(10,20)
-    arm.analyticalApproach(750,0)
+    # arm.moveToPos(10,20)
+    # arm.analyticalApproach(750,0)
+    init_x, init_y = arm.getPosition()
+    end_x = 0
+    end_y = 209
+    points = arm.createIntermediatePoints(init_x, init_y, end_x, end_y, max(1, int(arm.euclideanDistance(init_x, init_y, end_x, end_y) // 10)))
+    arm.newtonApproach(0, 209)
+    
     # if len(sys.argv) != 2:
     #     print("Error: Exactly one argument (pos/mid) is required.")
     #     sys.exit(1)
