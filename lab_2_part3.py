@@ -146,14 +146,17 @@ class Arm():
         j_21 = - self.lower_arm.length * cos(theta_1) - self.upper_arm.length * cos(theta_1 + theta_2)
         j_22 = - self.lower_arm.length * sin(theta_1) - self.upper_arm.length * sin(theta_1 + theta_2)
         determinant = self.lower_arm.length * self.upper_arm.length * sin(theta_2)
+        
 
         if (sin(theta_2) == 0):
           ## what to do when singular configuration met, use a super small value ex: 1e-6
             determinant = 1e-6
-            vel_kin = (1/determinant) * np.array([[j_11, j_12], [j_21, j_22]])
-            return vel_kin
-        
-        vel_kin =(1/determinant) * np.array([[j_11, j_12], [j_21, j_22]])
+            
+        determinant_inverse = 1/determinant
+
+        vel_kin = [[determinant_inverse * j_11, determinant_inverse * j_12],
+        [determinant_inverse * j_21, determinant_inverse * j_22]]
+
         
         return vel_kin
 
@@ -161,13 +164,13 @@ class Arm():
         theta_1 = self.getAngleOfArm(self.lower_arm)
         theta_2 = self.getAngleOfArm(self.upper_arm)
     
-        angles = np.zeros((self.max_iter, 2)) 
+        angles = [[0, 0] for i in range(self.max_iter)]
 
         for i in range(0, self.max_iter): ## or should we be slowly incrementing the x,y till we get to the desired location
             
             curr_x, curr_y = self.getPositioWithKnownAngles(theta_1, theta_2) # forward kinematics 
             print(f"round", i, "current location", curr_x, ",", curr_y)
-            error_position = np.array([[float(target_x - curr_x)],[float(target_y - curr_y)]])
+            error_position = [[float(target_x - curr_x)],[float(target_y - curr_y)]]
             
             delta_pos = self.euclideanDistance(curr_x, curr_y, target_x, target_y)
 
@@ -176,8 +179,10 @@ class Arm():
 
             vel_kin = self.velocity_kinematics(theta_1, theta_2)
             print(f"error of the position:", error_position, "distance to end point", delta_pos)
-            delta_theta = vel_kin @ error_position
-
+            delta_theta = [
+                vel_kin[0][0] * error_position[0][0] + vel_kin[0][1] * error_position[1][0],
+                vel_kin[1][0] * error_position[0][0] + vel_kin[1][1] * error_position[1][0]
+            ]
             
             theta_1 += delta_theta[0]
             theta_2 += delta_theta[1]
