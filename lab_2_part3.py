@@ -153,18 +153,19 @@ class Arm():
             determinant = 1e-6
             
         determinant_inverse = 1/determinant
+        #perform matrix to get jacobian
+        vel_kin = [
+            [determinant_inverse * j_11, determinant_inverse * j_12],
+            [determinant_inverse * j_21, determinant_inverse * j_22]
+            ]
 
-        vel_kin = [[determinant_inverse * j_11, determinant_inverse * j_12],
-        [determinant_inverse * j_21, determinant_inverse * j_22]]
-
-        
         return vel_kin
 
     def newtonApproach(self, target_x, target_y):
         theta_1 = self.getAngleOfArm(self.lower_arm)
         theta_2 = self.getAngleOfArm(self.upper_arm)
     
-        angles = [[0, 0] for i in range(self.max_iter)]
+        angles = [[0, 0] for i in range(self.max_iter)] #initialize empty arrays
 
         for i in range(0, self.max_iter): ## or should we be slowly incrementing the x,y till we get to the desired location
             
@@ -179,6 +180,7 @@ class Arm():
 
             vel_kin = self.velocity_kinematics(theta_1, theta_2)
             print(f"error of the position:", error_position, "distance to end point", delta_pos)
+            #perform matrix
             delta_theta = [
                 vel_kin[0][0] * error_position[0][0] + vel_kin[0][1] * error_position[1][0],
                 vel_kin[1][0] * error_position[0][0] + vel_kin[1][1] * error_position[1][0]
