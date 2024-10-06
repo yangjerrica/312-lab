@@ -135,16 +135,16 @@ class Arm():
         return points
     
     # of end effector
-    def normalize_angle(self,angle):
-        while angle < -2 * np.pi:
-            angle += 4 * np.pi
-        while angle > 2 * np.pi:
-            angle -= 4 * np.pi
-        return angle
+    # def normalize_angle(self,angle):
+    #     while angle < -2 * np.pi:
+    #         angle += 4 * np.pi
+    #     while angle > 2 * np.pi:
+    #         angle -= 4 * np.pi
+    #     return angle
 
     def getPositioWithKnownAngles(self, theta_1, theta_2):
-        theta_1 = self.normalize_angle(theta_1)
-        theta_2 = self.normalize_angle(theta_2)
+        # theta_1 = self.normalize_angle(theta_1)
+        # theta_2 = self.normalize_angle(theta_2)
 
         x = self.lower_arm.length * cos(theta_1) + self.upper_arm.length * cos(theta_1 + theta_2)
         y = self.lower_arm.length * sin(theta_1) + self.upper_arm.length * sin(theta_1 + theta_2)
@@ -222,9 +222,17 @@ class Arm():
             theta_1 += delta_theta[0]
             theta_2 += delta_theta[1]
             
+            if(i==self.max_iter):
+                curr_x, curr_y = self.getPositioWithKnownAngles(theta_1, theta_2)
+                error_position = [[float(target_x - curr_x)],[float(target_y - curr_y)]]
+                delta_pos = self.euclideanDistance(curr_x, curr_y, target_x, target_y)
+                if(delta_pos > self.newton_error):
+                    print("out of range")
+                                                                
 
             angles[i][0] = theta_1
             angles[i][1] = theta_2
+
             print(f"angles:", theta_1, ',', theta_2, ",")
         return angles
 
@@ -240,7 +248,7 @@ if __name__ == "__main__":
     end_x = 0
     end_y = 209
     points = arm.createIntermediatePoints(init_x, init_y, end_x, end_y, max(1, int(arm.euclideanDistance(init_x, init_y, end_x, end_y) // 10)))
-    arm.newtonApproach(30, 100)
+    arm.newtonApproach(-3000, 100)
     
     # if len(sys.argv) != 2:
     #     print("Error: Exactly one argument (pos/mid) is required.")
