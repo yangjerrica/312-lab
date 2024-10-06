@@ -135,7 +135,17 @@ class Arm():
         return points
     
     # of end effector
+    def normalize_angle(self,angle):
+        while angle < -2 * np.pi:
+            angle += 4 * np.pi
+        while angle > 2 * np.pi:
+            angle -= 4 * np.pi
+        return angle
+
     def getPositioWithKnownAngles(self, theta_1, theta_2):
+        theta_1 = self.normalize_angle(theta_1)
+        theta_2 = self.normalize_angle(theta_2)
+
         x = self.lower_arm.length * cos(theta_1) + self.upper_arm.length * cos(theta_1 + theta_2)
         y = self.lower_arm.length * sin(theta_1) + self.upper_arm.length * sin(theta_1 + theta_2)
         # print(lower_arm_angle, upper_arm_angle,x,y)
@@ -144,11 +154,10 @@ class Arm():
    
     
     def velocity_kinematics(self, theta_1, theta_2):
-        
-        j_11 = self.upper_arm.length * cos(theta_1 + theta_2)
-        j_12 = self.upper_arm.length * sin(theta_1 + theta_2)
-        j_21 = - self.lower_arm.length * cos(theta_1) - self.upper_arm.length * cos(theta_1 + theta_2)
-        j_22 = - self.lower_arm.length * sin(theta_1) - self.upper_arm.length * sin(theta_1 + theta_2)
+        j_22 = self.upper_arm.length * cos(theta_1 + theta_2)
+        j_21 = self.upper_arm.length * sin(theta_1 + theta_2)
+        j_12 =  self.lower_arm.length * cos(theta_1) + self.upper_arm.length * cos(theta_1 + theta_2)
+        j_11 = - self.lower_arm.length * sin(theta_1) - self.upper_arm.length * sin(theta_1 + theta_2)
         determinant = self.lower_arm.length * self.upper_arm.length * sin(theta_2)
         
 
@@ -196,7 +205,7 @@ class Arm():
 
             # print("target angle:",target_angle, "current_angle", current_angle)
             
-            max_change = 0.3
+            max_change = 1
 
             if (delta_theta[0] > max_change):
                 delta_theta[0] = max_change
@@ -231,7 +240,7 @@ if __name__ == "__main__":
     end_x = 0
     end_y = 209
     points = arm.createIntermediatePoints(init_x, init_y, end_x, end_y, max(1, int(arm.euclideanDistance(init_x, init_y, end_x, end_y) // 10)))
-    arm.newtonApproach(0, 209)
+    arm.newtonApproach(30, 100)
     
     # if len(sys.argv) != 2:
     #     print("Error: Exactly one argument (pos/mid) is required.")
