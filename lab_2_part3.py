@@ -1,5 +1,5 @@
 import sys
-from math import pi, cos, sin, sqrt, atan, acos 
+from math import pi, cos, sin, sqrt, atan, acos, atan2 
 import numpy as np
 # from ev3dev2.motor import LargeMotor, SpeedPercent, OUTPUT_A, OUTPUT_B
 class TempArm():
@@ -45,7 +45,7 @@ class Arm():
 
         # inverse config
         self.newton_error = 0.01
-        self.max_iter = 10
+        self.max_iter = 100
 
         # move to initial position
         self.moveArmsAbsolute(self.lower_arm.midpoint, self.upper_arm.midpoint)
@@ -65,11 +65,12 @@ class Arm():
     
     # of end effector
     def getPosition(self):
+        
         lower_arm_angle = self.getAngleOfArm(self.lower_arm, True)
         upper_arm_angle = self.getAngleOfArm(self.upper_arm, True)
+            
         x = self.lower_arm.length * cos(lower_arm_angle) + self.upper_arm.length * cos(lower_arm_angle + upper_arm_angle)
         y = self.lower_arm.length * sin(lower_arm_angle) + self.upper_arm.length * sin(lower_arm_angle + upper_arm_angle)
-        # print(lower_arm_angle, upper_arm_angle,x,y)
         return x, y
     
     def getLowerArm(self):
@@ -139,8 +140,11 @@ class Arm():
         y = self.lower_arm.length * sin(theta_1) + self.upper_arm.length * sin(theta_1 + theta_2)
         # print(lower_arm_angle, upper_arm_angle,x,y)
         return x, y
+
+   
     
     def velocity_kinematics(self, theta_1, theta_2):
+        
         j_11 = self.upper_arm.length * cos(theta_1 + theta_2)
         j_12 = self.upper_arm.length * sin(theta_1 + theta_2)
         j_21 = - self.lower_arm.length * cos(theta_1) - self.upper_arm.length * cos(theta_1 + theta_2)
@@ -151,6 +155,7 @@ class Arm():
         if (sin(theta_2) == 0):
           ## what to do when singular configuration met, use a super small value ex: 1e-6
             determinant = 1e-6
+            # print("here")
             
         determinant_inverse = 1/determinant
         #perform matrix to get jacobian
@@ -170,7 +175,7 @@ class Arm():
         for i in range(0, self.max_iter): ## or should we be slowly incrementing the x,y till we get to the desired location
             
             curr_x, curr_y = self.getPositioWithKnownAngles(theta_1, theta_2) # forward kinematics 
-            print(f"round", i, "current location", curr_x, ",", curr_y)
+            print(f"round", i, "current location x", curr_x, ", current location y", curr_y)
             error_position = [[float(target_x - curr_x)],[float(target_y - curr_y)]]
             
             delta_pos = self.euclideanDistance(curr_x, curr_y, target_x, target_y)
@@ -179,19 +184,39 @@ class Arm():
                 break
 
             vel_kin = self.velocity_kinematics(theta_1, theta_2)
-            print(f"error of the position:", error_position, "distance to end point", delta_pos)
-            #perform matrix
+            # print(f"error of the position:", error_position, "distance to end point", delta_pos)
+            
             delta_theta = [
                 vel_kin[0][0] * error_position[0][0] + vel_kin[0][1] * error_position[1][0],
                 vel_kin[1][0] * error_position[0][0] + vel_kin[1][1] * error_position[1][0]
             ]
+
+            # target_angle = atan2(error_position[0][0], error_position[1][0])
+            # current_angle = atan2(curr_y, curr_x)
+
+            # print("target angle:",target_angle, "current_angle", current_angle)
             
+            max_change = 0.3
+
+            if (delta_theta[0] > max_change):
+                delta_theta[0] = max_change
+            elif (delta_theta[0] < -max_change):
+                delta_theta[0] = -max_change
+                
+
+            if (delta_theta[1] > max_change):
+                delta_theta[1] = max_change
+            elif (delta_theta[1] < -max_change):
+                delta_theta[1] = -max_change
+
+
             theta_1 += delta_theta[0]
             theta_2 += delta_theta[1]
+            
 
             angles[i][0] = theta_1
             angles[i][1] = theta_2
-            print(f"angles:", theta_1, ',', theta_2)
+            print(f"angles:", theta_1, ',', theta_2, ",")
         return angles
 
 
